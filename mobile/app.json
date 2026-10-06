@@ -40,6 +40,13 @@
     ],
     "experiments": {
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e52e3fb0-209a-4e64-be09-57f3cbca55e5"
+      }
+    },
+    "owner": "godblessetudor"
   }
 }
