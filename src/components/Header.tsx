@@ -3,6 +3,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { signOutAction } from "@/app/actions";
 import { getCartCount } from "@/lib/cart";
+import { CartLiveSync } from "./CartLiveSync";
 
 export async function Header() {
   const session = await auth();
@@ -10,6 +11,7 @@ export async function Header() {
 
   return (
     <header className="sticky top-0 z-10 border-b border-stone-200 bg-white/90 backdrop-blur">
+      {session?.user && <CartLiveSync />}
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link href="/" className="text-lg font-semibold tracking-tight">
           Common <span className="text-brand">Goods</span>

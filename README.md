@@ -1,6 +1,6 @@
 # Common Goods: a small shop
 
-A full-stack shop built with Next.js (App Router).
+A full-stack shop built with Next.js (App Router), plus a companion **mobile app** in [mobile/](mobile/README.md) that uses the same API and accounts.
 
 - **Database:** **Supabase** Postgres, through Drizzle ORM. It stores users, Google accounts, sessions, products, carts, orders and order items.
 - **Auth:** **Google** sign-in with Auth.js (NextAuth v5). Sessions are stored in the database.
@@ -19,6 +19,34 @@ A full-stack shop built with Next.js (App Router).
 | `/signin` | Google sign-in |
 
 Payment is **pay on delivery**: there is no payment processor. Shipping is a flat $5, and free on orders over $50.
+
+## API
+
+The mobile app uses these endpoints. The website's pages and server actions call the same logic in [src/lib/shop.ts](src/lib/shop.ts), so both behave identically.
+
+Signed-in endpoints accept either the website's session cookie or `Authorization: Bearer <token>` from the mobile app. Both are rows in the same `session` table, so they resolve to the same user.
+
+| Method & path | Auth | What it does |
+| --- | --- | --- |
+| `GET /api/products` | — | All products |
+| `GET /api/products/:slug` | — | One product |
+| `GET /api/me` | ✓ | The signed-in user |
+| `GET /api/cart` | ✓ | The cart, with totals |
+| `POST /api/cart/items` | ✓ | Add to cart: `{ productId, quantity? }`. Returns the cart. |
+| `PATCH /api/cart/items/:id` | ✓ | Set quantity: `{ quantity }` (0 removes). Returns the cart. |
+| `DELETE /api/cart/items/:id` | ✓ | Remove an item. Returns the cart. |
+| `GET /api/cart/stream` | ✓ | **Live cart** (Server-Sent Events): a `cart` event on connect and on every change |
+| `GET /api/orders` | ✓ | Order history |
+| `POST /api/orders` | ✓ | Checkout: contact and shipping details. Returns `{ orderId, emailSent }`. |
+| `GET /api/orders/:id` | ✓ | One order with its items |
+| `GET /api/mobile/auth/start` | — | Mobile sign-in, step 1 (see [mobile/README.md](mobile/README.md#how-it-works)) |
+| `GET /api/mobile/auth/callback` | — | Mobile sign-in, step 2 |
+| `POST /api/mobile/auth/token` | — | Mobile sign-in, step 3: exchange the code and PKCE verifier for a token |
+| `POST /api/mobile/auth/logout` | Bearer | End this device's session |
+
+Errors come back as `{ error, fieldErrors? }` with a matching HTTP status: 401 not signed in, 404 not found, 409 sold out or empty cart, 422 invalid checkout details.
+
+**Live updates:** `/api/cart/stream` checks a small summary of the cart about once a second and pushes the full cart when it changes. The website listens too ([CartLiveSync](src/components/CartLiveSync.tsx)), so a change made in the app shows up in an open browser tab without a reload.
 
 ## Setup
 
@@ -94,11 +122,16 @@ src/
   auth.ts                 Auth.js config (Google + Drizzle adapter)
   db/schema.ts            All tables
   db/index.ts             Postgres client (Supabase pooler, TLS)
-drizzle/                  SQL migrations
+  lib/shop.ts             Cart, checkout and order logic shared by the website and the API
+  lib/api.ts              API auth (cookie or Bearer token), mobile sign-in helpers
   lib/mailgun.ts          Confirmation email
   lib/cart.ts             Cart queries
-  app/actions.ts          Server actions: cart, checkout, sign in/out
+  app/actions.ts          Server actions used by the website's pages
+  app/api/...             REST API used by the mobile app
   app/...                 Pages
   components/...          UI components
+drizzle/                  SQL migrations
 scripts/seed.ts           Sample products
+mobile/                   Expo (React Native) app
+vercel.json               Runs functions in Frankfurt (fra1), next to the Supabase database
 ```
